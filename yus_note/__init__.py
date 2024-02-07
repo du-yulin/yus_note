@@ -1,0 +1,1 @@
+from yus_note.celery import celery_app
