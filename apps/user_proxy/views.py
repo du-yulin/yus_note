@@ -137,14 +137,14 @@ class UserView(APIView):
         """详情"""
         # 每次请求个人信息，先刷新一下个人复习表
         # refresh_schedule(request.user)
-        serializer = UserDetailSerializer(instance=request.user)
+        serializer = UserDetailSerializer(instance=request.user,context={"request": request},)
         return Response(serializer.data)
 
     def post(self, request: Request, *args, **kwargs) -> Response:
         user = request.user
         partial = kwargs.pop("partial", True)
 
-        serializer = UserUpdateSerializer(user, request.data, partial=partial)
+        serializer = UserUpdateSerializer(user, request.data, partial=partial,context={"request": request},)
         serializer.is_valid(raise_exception=True)
 
         if getattr(user, "_prefetched_objects_cache", None):

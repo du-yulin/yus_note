@@ -182,6 +182,11 @@ EMAIL_PORT = 25
 
 # region corsheaders配置========================================
 CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
+CORS_ORIGIN_WHITELIST = (
+    'http://127.0.0.1:5173',    #设置白名单
+    'http://localhost:5173',
+)
 
 # endregion corsheaders配置========================================
 
