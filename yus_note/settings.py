@@ -184,8 +184,8 @@ EMAIL_PORT = 25
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
 CORS_ORIGIN_WHITELIST = (
-    'http://127.0.0.1:5173',    #设置白名单
-    'http://localhost:5173',
+    "http://127.0.0.1:5173",  # 设置白名单
+    "http://localhost:5173",
 )
 
 # endregion corsheaders配置========================================
@@ -274,7 +274,7 @@ CELERYBEAT_SCHEDULE = {
         # 每天2点59分
         "schedule": crontab(hour="2", minute="59"),
     },
-    "synchronize_note_views_seconds": {  # 定时同步note浏览量
+    "synchronize_note_views_seconds": {  # 每隔一段时间同步note浏览量
         # 任务路径
         "task": "apps.note.tasks.synchronize_note_views",
         # 每5分钟同步
@@ -321,9 +321,6 @@ HAYSTACK_SIGNAL_PROCESSOR = "haystack.signals.RealtimeSignalProcessor"
 # region 自定义配置========================================
 # 默认用户头像，注意需要/media前缀
 DEFAULT_AVATOR = "/media/user/default_avators/male.png"
-
-# 笔记分类，默认分类名称
-DEFAULT_NOTE_TAG_NAME = "默认分类"
 
 # 用户默认复习计划
 DEFAULT_REVIEW_PLAN = "1,3,7,14,30"

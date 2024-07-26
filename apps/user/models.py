@@ -1,5 +1,4 @@
 from typing import Union, Any, Type, Optional
-from datetime import date, timedelta
 
 from django.conf import settings
 from django.db import models
@@ -11,6 +10,8 @@ from django.contrib.auth.models import PermissionsMixin, Permission
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.mail import send_mail
 from django.utils.deconstruct import deconstructible
+
+from tinymce.models import HTMLField
 
 from yus_note.models import ReviewMixinModel, cached_model_property
 from user.validators import FileSizeValidator
@@ -98,36 +99,6 @@ class UserManager(BaseUserManager):
         return self.none()
 
 
-class Profession(models.Model):
-    """职业"""
-
-    order = models.PositiveSmallIntegerField("顺序", default=0)
-    name = models.CharField(
-        "名称",
-        max_length=32,
-    )
-    parent = models.ForeignKey(
-        verbose_name="父级职业",
-        to="self",
-        blank=True,
-        null=True,
-        related_name="children",
-        on_delete=models.SET_NULL,
-    )
-
-    class Meta:
-        verbose_name = "职业"
-        verbose_name_plural = verbose_name
-        constraints = [
-            models.UniqueConstraint(fields=["name"], name="profession_uni_name")
-        ]
-        indexes = [models.Index(fields=["order"], name="profession_idx_order")]
-        ordering = ["parent__id", "order", "name"]
-
-    def __str__(self) -> str:
-        return "{}/{}".format(self.parent, self.name)
-
-
 def default_history():
     return {}
 
@@ -146,15 +117,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         validators=[UnicodeUsernameValidator()],
         error_messages={"unique": "该用户名已经存在！"},
     )
+
     nickname = models.CharField(
         "昵称",
         max_length=8,
         blank=True,
         help_text="8个以内字符。",
     )
-    email = models.EmailField(
-        "邮箱", blank=True, null=True, error_messages={"unique": "该邮箱已注册！"}
-    )
+
     phone = models.CharField(
         "手机号",
         max_length=11,
@@ -162,8 +132,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True,
         error_messages={"unique": "该手机号已注册！"},
     )
-    is_staff = models.BooleanField("是否为管理员", default=False, help_text="是否可以登录后台管理系统。")
-    is_active = models.BooleanField("是否激活", default=True)
+
+    email = models.EmailField(
+        "邮箱", blank=True, null=True, error_messages={"unique": "该邮箱已注册！"}
+    )
 
     avator = models.ImageField(
         "头像",
@@ -172,32 +144,42 @@ class User(AbstractBaseUser, PermissionsMixin):
         null=True,
         validators=[avator_validator],
     )
-    gender = models.CharField(
-        "性别", max_length=1, choices=[("男", "男"), ("女", "女")], default="男"
+
+    resume = HTMLField("简介", default="", max_length=256, help_text="个人简介")
+
+    is_staff = models.BooleanField(
+        "是否为管理员", default=False, help_text="是否可以登录后台管理系统。"
     )
+
+    is_active = models.BooleanField("是否激活", default=True)
+
     registration_date = models.DateField("注册日期", auto_now_add=True)
 
     last_publish_datetime = models.DateTimeField(
         "最近发布时间", null=True, blank=True, help_text="最近发布笔记时间。"
     )
+
     review_history = models.JSONField(
         "复习记录",
         default=default_history,
         blank=True,
         help_text="笔记复习记录: 键为日期字符串; 值为每天复习数量, 每天复习数量使用','隔开。",
     )
+
     publish_history = models.JSONField(
         "发布记录",
         default=default_history,
         blank=True,
         help_text="笔记发布记录: 键为日期字符串; 值为每天复习数量, 每天复习数量使用','隔开。",
     )
+
     review_plan = models.CharField(
         "复习计划",
         max_length=64,
         default=settings.DEFAULT_REVIEW_PLAN,
         help_text="分别在多少天后复习笔记，使用','连接多个天数（如：'1,3,7,30'表示新的笔记分别在1、3、7天后进行复习）。",
     )
+
     following = models.ManyToManyField(
         verbose_name="关注",
         to="self",
@@ -207,6 +189,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         through="UserRelations",
         through_fields=("following", "follower"),
     )
+
     collected_notes = models.ManyToManyField(
         verbose_name="收藏的笔记",
         to="note.Note",
@@ -214,14 +197,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True,
         through="UserCollections",
         through_fields=("user", "note"),
-    )
-    professions = models.ManyToManyField(
-        verbose_name="职业",
-        to=Profession,
-        related_name="users",
-        blank=True,
-        through="UserProfessionTags",
-        through_fields=("user", "profession"),
     )
 
     objects = UserManager()
@@ -264,40 +239,6 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self) -> str:
         return "{}:{}".format(self.username, self.nickname or "--")
-
-
-class UserProfessionTags(models.Model):
-    """用户职业经验tags"""
-
-    user = models.ForeignKey(
-        verbose_name="用户",
-        to=User,
-        on_delete=models.CASCADE,
-        related_name="profession_tags",
-        limit_choices_to={"is_active": True},
-    )
-    profession = models.ForeignKey(
-        verbose_name="职业",
-        to=Profession,
-        on_delete=models.CASCADE,
-        related_name="profession_tags",
-        limit_choices_to={"children": None},
-    )
-    entry_date = models.DateField("入行日期")
-
-    class Meta:
-        verbose_name = verbose_name_plural = "用户职业标签"
-        db_table = "user_user_profession_tags"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "profession"],
-                name="user_ptags_uni_user_profession",
-            )
-        ]
-        ordering = ["entry_date"]
-
-    def __str__(self) -> str:
-        return f"{self.user.username}:{self.profession.name}/{self.entry_date}"
 
 
 class UserRelations(models.Model):

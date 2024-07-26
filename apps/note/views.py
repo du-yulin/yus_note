@@ -5,7 +5,7 @@ from rest_framework.filters import OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_haystack.viewsets import HaystackViewSet
 
-from note.models import Note, NoteTag, NoteComments
+from note.models import Note, Tag, NoteComments
 from note.serializers import (
     NoteListSerializer,
     NoteDetailSerializer,
@@ -20,7 +20,7 @@ from note.serializers import (
 class NoteTagViewSet(CreateModelMixin, ListModelMixin, GenericViewSet):
     """笔记标签：列表"""
 
-    queryset = NoteTag.objects.all()
+    queryset = Tag.objects.all()
     serializer_class = NoteTagSerializer
 
 
@@ -63,13 +63,13 @@ class NoteCommentsViewSet(ListModelMixin, GenericViewSet):
 
 class NoteTagSearchViewSet(HaystackViewSet):
     """笔记标签搜索：列表"""
-    index_models = [NoteTag]
+
+    index_models = [Tag]
     serializer_class = NoteTagHaystackSerializer
 
 
 class NoteSearchViewSet(HaystackViewSet):
     """笔记搜索：列表"""
+
     index_models = [Note]
     serializer_class = NoteHaystackSerializer
-
-

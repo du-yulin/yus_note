@@ -1,5 +1,4 @@
 import random
-from datetime import date
 
 from django.conf import settings
 from django.core.cache import caches
@@ -13,9 +12,7 @@ from yus_note.drf.serializers import (
     DateToNowDaysFields,
 )
 from user.models import (
-    Profession,
     User,
-    UserProfessionTags,
     UserRelations,
     UserCollections,
     UserFolders,
@@ -83,16 +80,6 @@ class AuthCodeSerializer(serializers.Serializer):
         return validated_data
 
 
-class ProfessionSerializer(DynamicFieldsModelSerializer):
-    """行业序列化"""
-
-    children = NestedCurrentModelSerializer(many=True)
-
-    class Meta:
-        model = Profession
-        fields = ["id", "name", "children"]
-
-
 class UserListSerializer(serializers.ModelSerializer):
     """用户：列表"""
 
@@ -121,7 +108,6 @@ class UserDetailSerializer(DynamicFieldsModelSerializer):
             "email",
             "phone",
             "avator",
-            "gender",
             "registration_date",
             "last_publish_datetime",
             "review_history",
@@ -141,7 +127,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "email",
             "phone",
             "avator",
-            "gender",
             "password",
         )
 
@@ -192,38 +177,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             instance.set_password(password)
 
         return super().update(instance, validated_data)
-
-
-class UserPTagsListSerializer(serializers.ModelSerializer):
-    """用户行业标签序列化：列表"""
-
-    profession = ProfessionSerializer(fields=["id", "name"])
-    experience = DateToNowDaysFields(source="entry_date")
-
-    class Meta:
-        model = UserProfessionTags
-        fields = ["id", "profession", "experience"]
-
-
-class UserPTagsSerializer(serializers.ModelSerializer):
-    """用户行业标签序列化：创建、更新"""
-
-    experience = DateToNowDaysFields(source="entry_date")
-
-    class Meta:
-        model = UserProfessionTags
-        fields = ["id", "profession", "experience"]
-
-    def validate_experience(self, value):
-        if value > date.today():
-            raise serializers.ValidationError("经验不能为负数。")
-        return value
-
-    def validate_profession(self, value):
-        user = self.context["request"].user
-        if UserProfessionTags.objects.filter(user=user, profession=value).exists():
-            raise serializers.ValidationError("已有该职业标签。")
-        return value
 
 
 class UserFollowingListSerializer(serializers.ModelSerializer):

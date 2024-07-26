@@ -1,5 +1,5 @@
 from haystack import indexes
-from note.models import NoteTag, Note
+from note.models import Tag, Note
 
 
 class NoteTagIndex(indexes.SearchIndex, indexes.Indexable):
@@ -8,7 +8,7 @@ class NoteTagIndex(indexes.SearchIndex, indexes.Indexable):
     # name = indexes.CharField(model_attr='name')
     
     def get_model(self):
-        return NoteTag
+        return Tag
 
     def index_queryset(self, using=None):
         return self.get_model().objects.all()

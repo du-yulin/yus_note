@@ -25,9 +25,7 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 
 from user.models import (
-    Profession,
     User,
-    UserProfessionTags,
     UserRelations,
     UserCollections,
     UserFolders,
@@ -35,11 +33,8 @@ from user.models import (
 )
 from user_proxy.serializers import (
     AuthCodeSerializer,
-    ProfessionSerializer,
     UserDetailSerializer,
     UserUpdateSerializer,
-    UserPTagsSerializer,
-    UserPTagsListSerializer,
     UserFollowingListSerializer,
     UserFollowingSerializer,
     UserFollowersListSerializer,
@@ -81,15 +76,6 @@ class AuthCodeView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class ProfessionViewSet(ListModelMixin, GenericViewSet):
-    """用户行业列表"""
-
-    serializer_class = ProfessionSerializer
-    queryset = Profession.objects.filter(parent=None).prefetch_related(
-        "children__children"
-    )
-
-
 class LoginView(APIView):
     """用户手机或邮箱登录,验证码注册登录
     登录方式-请求参数对照表：
@@ -97,11 +83,13 @@ class LoginView(APIView):
         邮箱密码登录-email/password
         手机号验证码登录-phone/authcode
         邮箱验证码登录-email/authcode
-        微信扫码登录-
+
     """
 
     def post(self, request: Request) -> Response:
-        user = authenticate(request, **cast(dict, request.data))  # 验证码登录时，未注册会自动注册
+        user = authenticate(
+            request, **cast(dict, request.data) # type: ignore
+        )  # 验证码登录时，未注册会自动注册
         if not user:
             raise AuthenticationFailed("登录失败！")
         login(cast(HttpRequest, request), user)
@@ -137,14 +125,22 @@ class UserView(APIView):
         """详情"""
         # 每次请求个人信息，先刷新一下个人复习表
         # refresh_schedule(request.user)
-        serializer = UserDetailSerializer(instance=request.user,context={"request": request},)
+        serializer = UserDetailSerializer(
+            instance=request.user,
+            context={"request": request},
+        )
         return Response(serializer.data)
 
     def post(self, request: Request, *args, **kwargs) -> Response:
         user = request.user
         partial = kwargs.pop("partial", True)
 
-        serializer = UserUpdateSerializer(user, request.data, partial=partial,context={"request": request},)
+        serializer = UserUpdateSerializer(
+            user,
+            request.data,
+            partial=partial,
+            context={"request": request},
+        )
         serializer.is_valid(raise_exception=True)
 
         if getattr(user, "_prefetched_objects_cache", None):
@@ -152,32 +148,6 @@ class UserView(APIView):
             user._prefetched_objects_cache = {}
 
         return Response(serializer.data)
-
-
-class UserPTagsViewSet(
-    ListModelMixin,
-    CreateModelMixin,
-    UpdateModelMixin,
-    DestroyModelMixin,
-    GenericViewSet,
-):
-    """个人标签：列表、创建、更新、删除"""
-
-    permission_classes = IsAuthenticated
-
-    def get_serializer_class(self):
-        if self.action == "list":
-            return UserPTagsListSerializer
-        return UserPTagsSerializer
-
-    def get_queryset(self):
-        return UserProfessionTags.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
-    def perform_update(self, serializer):
-        serializer.save(user=self.request.user)
 
 
 class UserFollowingViewSet(
@@ -390,7 +360,12 @@ class UserNotesViewSet(ModelViewSet):
         instance = self.get_object()
         permanet = request.data.get("permanet", False)
         if permanet:
+            # 删除后删除空标签
+            tags = [instance.tags.all()]
             self.perform_destroy(instance)
+            for tag in tags:
+                if tag.notes.count() == 0:
+                    tag.delete()
         else:
             instance.is_delete = True
             instance.delete_date = date.today()
@@ -459,7 +434,22 @@ class TargetUserView(APIView):
 
     def get(self, request: Request, target_user):
         target_user = get_object_or_404(User.objects.all(), id=target_user)
-        serializer = UserDetailSerializer(instance=target_user)
+        serializer = UserDetailSerializer(
+            instance=target_user,
+            context={"request": request},
+            fields=(
+                "id",
+                "username",
+                "nickname",
+                "email",
+                "avator",
+                "last_publish_datetime",
+                "review_history",
+                "publish_history",
+                "following_number",
+                "followers_number",
+            ),
+        )
         return Response(serializer.data)
 
 

@@ -8,5 +8,7 @@
 
 # media
 **/avators/*
+# migration
+# **/migrations/*
 #python cahe
 **/__pycache__/*
